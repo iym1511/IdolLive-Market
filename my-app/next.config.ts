@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/",
-        destination: "/", // 첫 로딩 페이지 설정
+        destination: "/home", // 첫 로딩 페이지 설정
         permanent: true,
       },
     ];
