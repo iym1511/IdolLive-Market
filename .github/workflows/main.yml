@@ -1,1 +1,65 @@
+name: Full Stack CI/CD
 
+on:
+  push:
+    branches: [main]               # main 브랜치로 push될 때 실행
+  pull_request:
+    branches: [main]               # main 브랜치 PR에도 실행
+
+jobs:
+  # ────────────────────────────────────────────────────────
+  # 1) 변경된 디렉토리 감지 (my-app / my-node)
+  # ────────────────────────────────────────────────────────
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}   # 프론트 변경 여부
+#      backend: ${{ steps.filter.outputs.backend }}     # 백엔드 변경 여부
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4                       # 리포지토리 가져오기
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v3                     # 특정 폴더 변경 체크
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'my-app/**'                             # 프론트 파일 변경 감지
+#            backend:
+#              - 'my-node/**'                            # 백엔드 파일 변경 감지
+
+  # ────────────────────────────────────────────────────────
+  # 2) 프론트엔드 빌드 (my-app 변경 시에만 실행)
+  # ────────────────────────────────────────────────────────
+  build-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' # 프론트 변경 없으면 건너뜀
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./my-app                     # 모든 명령은 my-app 내부에서 실행
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.2'                       # Node 버전 고정
+          cache: 'npm'                                  # node_modules 캐싱
+          cache-dependency-path: './my-app/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci                                     # 패키지 설치 (ci는 재현성 높음)
+
+      - name: Run lint
+        run: npm run lint                               # 코드 린트 검사
+
+      - name: Build
+        run: npm run build                              # Next.js 빌드
+
+      - name: Success notification
+        run: echo "✅ Frontend build completed successfully!"
